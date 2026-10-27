@@ -137,4 +137,5 @@ src/
 ---
 
 ## 🌐 Enlace de Despliegue en Vercel
-- **URL Producción:** `https://plancity-coworking.vercel.app` (o el dominio configurado en tu cuenta de Vercel tras conectar este repositorio).
+- **URL Producción:** [https://coworkingspace-zeta.vercel.app](https://coworkingspace-zeta.vercel.app)
+
