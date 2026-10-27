@@ -1,0 +1,84 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum SpaceStatus {
+  AVAILABLE   // Activo y libre para reservar
+  RESERVED    // Ya reservado por un usuario (bloqueado para el resto)
+  EXPIRED     // Expiró el tiempo límite sin que nadie reservara (Desierto)
+  CANCELLED   // Cancelado por el anfitrión o por moderación
+}
+
+model User {
+  id               String        @id @default(uuid())
+  name             String
+  email            String        @unique
+  passwordHash     String
+  role             Role          @default(USER)
+  refreshTokenHash String?       // Hash del refresh token para rotación y revocación
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  publishedSpaces  Space[]       @relation("HostSpaces")
+  reservations     Reservation[]
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  spaces      Space[]
+  createdAt   DateTime @default(now())
+}
+
+model Space {
+  id               String      @id @default(uuid())
+  title            String
+  description      String
+  address          String
+  capacity         Int
+  price            Decimal     @db.Decimal(10, 2) // Mayor a 0
+  serviceFee       Decimal     @db.Decimal(10, 2) // Mayor a 0
+  imageUrl         String
+  status           SpaceStatus @default(AVAILABLE)
+  expiresAt        DateTime    // Entre 1 hora y 7 días desde createdAt
+  cancelReason     String?     // Obligatorio cuando cancela el ADMIN
+
+  hostId           String
+  host             User        @relation("HostSpaces", fields: [hostId], references: [id])
+
+  categoryId       String
+  category         Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  reservation      Reservation? // Relación 1 a 1: clave única para bloqueo exclusivo
+
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([status, categoryId, expiresAt])
+}
+
+model Reservation {
+  id          String   @id @default(uuid())
+  totalAmount Decimal  @db.Decimal(10, 2)
+  reservedAt  DateTime @default(now())
+
+  // Clave única en spaceId garantiza en BD que NO puedan existir dos reservas para el mismo espacio
+  spaceId     String   @unique
+  space       Space    @relation(fields: [spaceId], references: [id])
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+}
